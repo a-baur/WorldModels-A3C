@@ -42,6 +42,9 @@ transform = transforms.Compose([
     transforms.ToTensor()
 ])
 
+max_ep = hp.max_ep * 2
+test_ep = hp.max_ep
+
 
 def obs2tensor(obs):
     binary_road = obs2feature(obs) # (10, 10)
@@ -303,51 +306,50 @@ def save_means_plot(infos, add_prefix=None, root='ckpt'):
     plt.savefig('{}/total-scores.png'.format(ckpt_dir))
 
 
-# ### V model & M model
+if __name__ == "__main__":
+    # ### V model & M model
 
-vae_path = sorted(glob.glob(os.path.join(hp.ckpt_dir, 'vae', '*.pth.tar')))[-1]
-vae_state = torch.load(vae_path, map_location={'cuda:0': str(device)})
+    vae_path = sorted(glob.glob(os.path.join(hp.ckpt_dir, 'vae', '*.pth.tar')))[-1]
+    vae_state = torch.load(vae_path, map_location={'cuda:0': str(device)})
 
-rnn_path = sorted(glob.glob(os.path.join(hp.ckpt_dir, 'rnn', '*.pth.tar')))[-1]
-rnn_state = torch.load(rnn_path, map_location={'cuda:0': str(device)})
+    rnn_path = sorted(glob.glob(os.path.join(hp.ckpt_dir, 'rnn', '*.pth.tar')))[-1]
+    rnn_state = torch.load(rnn_path, map_location={'cuda:0': str(device)})
 
-vae = VAE(hp.vsize).to(device)
-vae.load_state_dict(vae_state['model'])
-vae.eval()
+    vae = VAE(hp.vsize).to(device)
+    vae.load_state_dict(vae_state['model'])
+    vae.eval()
 
-# rnn = MDNRNN(hp.vsize, hp.asize, hp.rnn_hunits, hp.n_gaussians).to(device)
-rnn = RNN(hp.vsize, hp.asize, hp.rnn_hunits).to(device)
-rnn.load_state_dict(rnn_state['model'])
-# mdnrnn.load_state_dict({k.strip('_l0'): v for k, v in rnn_state['state_dict'].items()})
-rnn.eval()
+    # rnn = MDNRNN(hp.vsize, hp.asize, hp.rnn_hunits, hp.n_gaussians).to(device)
+    rnn = RNN(hp.vsize, hp.asize, hp.rnn_hunits).to(device)
+    rnn.load_state_dict(rnn_state['model'])
+    # mdnrnn.load_state_dict({k.strip('_l0'): v for k, v in rnn_state['state_dict'].items()})
+    rnn.eval()
 
-print('Loaded VAE: {}, RNN: {}'.format(vae_path, rnn_path))
+    print('Loaded VAE: {}, RNN: {}'.format(vae_path, rnn_path))
 
-# ###  Environment
+    # ###  Environment
 
-total_infos = []
-max_ep = hp.max_ep*2
-test_ep = hp.max_ep
+    total_infos = []
 
-state_dims = hp.vsize + hp.rnn_hunits + 100 if hp.use_binary_feature else hp.vsize + hp.rnn_hunits
-hidden_dims = hp.ctrl_hidden_dims
-lr = 1e-4
+    state_dims = hp.vsize + hp.rnn_hunits + 100 if hp.use_binary_feature else hp.vsize + hp.rnn_hunits
+    hidden_dims = hp.ctrl_hidden_dims
+    lr = 1e-4
 
-global_agent = A3C(input_dims=state_dims, hidden_dims=hidden_dims, lr=lr).to(device)
-global_agent.share_memory()
+    global_agent = A3C(input_dims=state_dims, hidden_dims=hidden_dims, lr=lr).to(device)
+    global_agent.share_memory()
 
-update_term = 100
-n_processes = 3
-processes = []
+    update_term = 100
+    n_processes = 3
+    processes = []
 
-for pid in range(n_processes+1):
-    if pid == 0:
-        p = mp.Process(target=test_process, args=(global_agent, vae, rnn, update_term, pid, state_dims, hidden_dims, lr,))
-    else:
-        p = mp.Process(target=train_process, args=(global_agent, vae, rnn, update_term, pid, state_dims, hidden_dims, lr,))
-    p.start()
-    processes.append(p)
+    for pid in range(n_processes+1):
+        if pid == 0:
+            p = mp.Process(target=test_process, args=(global_agent, vae, rnn, update_term, pid, state_dims, hidden_dims, lr,))
+        else:
+            p = mp.Process(target=train_process, args=(global_agent, vae, rnn, update_term, pid, state_dims, hidden_dims, lr,))
+        p.start()
+        processes.append(p)
 
-for p in processes:
-    p.join()
+    for p in processes:
+        p.join()
 
