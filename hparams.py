@@ -64,6 +64,8 @@ class RNNHyperParams:
     log_interval = 1000
     save_interval = 2000
 
+    seed = 0
+
     max_step = 100000
 
     n_workers = 0
