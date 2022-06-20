@@ -59,7 +59,7 @@ class RNNHyperParams:
 
     vsize = 128 # latent size of Vision
     msize = 128 # size of Memory
-    asize = 3 # action size
+    asize = 4 # action size
     rnn_hunits = 256
     log_interval = 1000
     save_interval = 2000
