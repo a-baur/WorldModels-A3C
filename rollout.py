@@ -4,6 +4,7 @@ import gym
 from hparams import HyperParams as hp
 from huggingface_sb3 import load_from_hub
 from stable_baselines3 import PPO
+import cv2
 
 def rollout():
     env = gym.make("BipedalWalker-v3")
@@ -51,32 +52,32 @@ def rollout():
             next_img_downscaled = cv2.resize(next_img, dim, interpolation = cv2.INTER_AREA)
 
 
-            np.savez(
-                os.path.join(feat_dir, 'rollout_{:03d}_{:04d}'.format(ep,t)),
-                obs=img_downscaled, # save img as observations
-                action=action,
-                reward=reward,
-                next_obs=next_img_downscaled,
-                done=done,
-            )
+            # np.savez(
+            #     os.path.join(feat_dir, 'rollout_{:03d}_{:04d}'.format(ep,t)),
+            #     obs=img_downscaled, # save img as observations
+            #     action=action,
+            #     reward=reward,
+            #     next_obs=next_img_downscaled,
+            #     done=done,
+            # )
             
-            # obs_lst.append(img)
-            # action_lst.append(action)
-            # reward_lst.append(reward)
-            # next_obs_lst.append(next_img)
-            # done_lst.append(done)
+            obs_lst.append(img_downscaled)
+            action_lst.append(action)
+            reward_lst.append(reward)
+            next_obs_lst.append(next_img_downscaled)
+            done_lst.append(done)
 
             obs = next_obs
-            img = next_img_downscaled
+            img_downscaled = next_img_downscaled
 
-        # np.savez(
-        #     os.path.join(feat_dir, 'rollout_ep_{:03d}'.format(ep)),
-        #     obs=np.stack(obs_lst, axis=0), # (T, C, H, W)
-        #     action=np.stack(action_lst, axis=0), # (T, a)
-        #     reward=np.stack(reward_lst, axis=0), # (T, 1)
-        #     next_obs=np.stack(next_obs_lst, axis=0), # (T, C, H, W)
-        #     done=np.stack(done_lst, axis=0), # (T, 1)
-        # )
+        np.savez(
+            os.path.join(feat_dir, 'rollout_ep_{:03d}'.format(ep)),
+            obs=np.stack(obs_lst, axis=0), # (T, C, H, W)
+            action=np.stack(action_lst, axis=0), # (T, a)
+            reward=np.stack(reward_lst, axis=0), # (T, 1)
+            next_obs=np.stack(next_obs_lst, axis=0), # (T, C, H, W)
+            done=np.stack(done_lst, axis=0), # (T, 1)
+        )
         
         
 

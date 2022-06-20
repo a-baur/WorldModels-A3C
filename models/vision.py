@@ -6,8 +6,8 @@ from hparams import HyperParams as hp
 class VAE(nn.Module):
     def __init__(self, latent_dims, img_channels=3):
         super(VAE, self).__init__()
-        self.encoder = Encoder(img_channels, latent_dims)
-        self.decoder = Decoder(img_channels, latent_dims)
+        self.encoder = nn.DataParallel(Encoder(img_channels, latent_dims))
+        self.decoder = nn.DataParallel(Decoder(img_channels, latent_dims))
 
     def forward(self, x):
         mu, logvar = self.encoder(x)
@@ -28,17 +28,19 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         # flatten_dims = hp.img_height//2**4
         self.latent_dims = latent_dims
-        self.encoder = nn.Sequential(
-            nn.Conv2d(in_channels, 32, 3, stride=2, padding=1),
-            nn.LeakyReLU(), # (B, 32, 48, 48)
+        self.encoder = nn.Sequential(  # IN (B, 3, 120, 180)
+            nn.Conv2d(in_channels, 16, 3, stride=2, padding=1),
+            nn.LeakyReLU(), # (B, 16, 60, 90)
+            nn.Conv2d(16, 32, 3, stride=2, padding=1),
+            nn.LeakyReLU(), # (B, 32, 30, 45)
             nn.Conv2d(32, 64, 3, stride=2, padding=1),
-            nn.LeakyReLU(), # (B, 64, 24, 24)
+            nn.LeakyReLU(), # (B, 64, 15, 23)
             nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            nn.LeakyReLU(), # (B, 128, 12, 12)
+            nn.LeakyReLU(), # (B, 128, 8, 12)
             nn.Conv2d(128, 256, 3, stride=2, padding=1),
-            nn.LeakyReLU(), # (B, 256, 6, 6)
+            nn.LeakyReLU(),  # (B, 256, 4, 6)
         )
-        self.fc = nn.Linear(6*6*256, latent_dims*2)
+        self.fc = nn.Linear(6*4*256, latent_dims*2)
         self.softplus = nn.Softplus()
 
     def forward(self, x):
@@ -55,18 +57,20 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.fc = nn.Linear(latent_dims, 1024)
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(256, 128, 6, stride=2, padding=1),
-            nn.LeakyReLU(), # (B, 128, 6, 6)
+            nn.ConvTranspose2d(256, 128, (4, 6), stride=2, padding=1),
+            nn.LeakyReLU(), # (B, 128, 4, 6)
             nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1),
-            nn.LeakyReLU(), # (B, 64, 12, 12)
-            nn.ConvTranspose2d(64, 32, 4, stride=2, padding=1),
-            nn.LeakyReLU(), # (B, 32, 24, 24)
-            nn.ConvTranspose2d(32, 32, 4, stride=2, padding=1),
-            nn.LeakyReLU(), # (B, 32, 48, 48)
-            nn.ConvTranspose2d(32, out_channels, 4, stride=2, padding=1),
+            nn.LeakyReLU(),  # (B, 64, 8, 12)
+            nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1),
+            nn.LeakyReLU(), # (B, 32, 15, 23)
+            nn.ConvTranspose2d(32, 32, (4,3), stride=2, padding=1),
+            nn.LeakyReLU(), # (B, 32, 30, 45)
+            nn.ConvTranspose2d(32, 16, 4, stride=2, padding=1),
+            nn.LeakyReLU(), # (B, 16, 60, 90)
+            nn.ConvTranspose2d(16, out_channels, 4, stride=2, padding=1),
             # nn.Tanh()
             nn.Sigmoid()
-            # nn.LeakyReLU(), # (B, c, 96, 96)
+            # nn.LeakyReLU(), # (B, c, 120, 180)
         )
 
     def forward(self, z):
