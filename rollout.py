@@ -28,7 +28,7 @@ def rollout():
 
     for ep in range(max_ep):
         env.seed(ep) # every episode has different seed
-        #obs_lst, action_lst, reward_lst, next_obs_lst, done_lst = [], [], [], [], []
+        obs_lst, action_lst, reward_lst, next_obs_lst, done_lst = [], [], [], [], []
         obs = env.reset()
         img = env.render(mode = "rgb_array") # initial obs
         # Downscale image
@@ -46,7 +46,7 @@ def rollout():
 
             next_obs, reward, done, _ = env.step(action)
 
-            next_img = env.render(mode = "rgb_array")
+            next_img = env.render(mode="rgb_array")
 
             # Downscale next image
             next_img_downscaled = cv2.resize(next_img, dim, interpolation = cv2.INTER_AREA)
